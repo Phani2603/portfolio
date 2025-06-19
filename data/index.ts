@@ -68,7 +68,7 @@ export const projects = [
     title: "AlgoViz - Algorithm Visualizer",
     titlehead: "AlgoViz",
     des: "An sophisticated educational platform engineered with React and TypeScript, featuring dynamic visualizations of CPU scheduling and page replacement algorithms. This interactive tool transforms complex computational concepts into intuitive visual experiences, empowering students and professionals to master algorithmic thinking through immersive learning.",
-    img: "/p1.svg",
+    img: "/p11.svg",
     iconLists: ["/re.svg", "/tail.svg", "/ts.svg", "/three.svg", "/fm.svg"],
     link: "https://dynamic-selkie-6705f3.netlify.app/",
   },

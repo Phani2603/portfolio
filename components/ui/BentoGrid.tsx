@@ -176,6 +176,7 @@ const LottiePlayer = dynamic(() => import("react-lottie"), {
                   options={defaultOptions} 
                   height={200} 
                   width={400} 
+                  style={{ transform:'translateX(0)', margin: '0 auto' }}
                 />
               </div>
 
