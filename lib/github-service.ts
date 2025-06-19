@@ -24,15 +24,28 @@ export class GitHubService {
       'Accept': 'application/vnd.github.v3+json',
       'User-Agent': 'Portfolio-App'
     };
-  }
-  async getRepositories(): Promise<GitHubRepo[]> {
+  }  async getRepositories(): Promise<GitHubRepo[]> {
     try {
+      // Prepare fetch options with environment-based caching
+      const fetchOptions: RequestInit = {
+        headers: this.headers,
+      };
+
+      // Environment-based caching strategy
+      if (process.env.NODE_ENV === 'production') {
+        // Production: Cache for 1 hour to reduce API calls and improve performance
+        fetchOptions.next = { revalidate: 3600 };
+      } else {
+        // Development: No cache to get fresh data for testing repo updates
+        fetchOptions.cache = 'no-cache';
+      }
+
+      // Original caching (commented out for reference):
+      // next: { revalidate: 3600 } // Cache for 1 hour
+
       const response = await fetch(
         `${this.baseUrl}/users/${this.username}/repos?sort=updated&per_page=100&type=owner`,
-        { 
-          headers: this.headers,
-          next: { revalidate: 3600 } // Cache for 1 hour
-        }
+        fetchOptions
       );
 
       if (!response.ok) {
