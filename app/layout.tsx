@@ -80,7 +80,7 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: "/android-chrome-512x512.png",
     apple: "/apple-touch-icon.png",
   },
   alternates: {
