@@ -43,22 +43,49 @@ export default function DemoPage() {
     try {
       const response = await fetch('/api/projects');
       const result = await response.json();
-      if (result.success && result.data) {        // Map database projects to demo format using ProjectService
-        const mappedProjects = result.data.map((project: any, index: number) => ({
-          id: index + 1,
-          title: project.title,
-          titlehead: project.title,
-          des: project.description || "A comprehensive project showcasing modern development practices.",
-          img: ProjectService.getProjectImage(project.category),
-          iconLists: ProjectService.mapTechStackToIcons(project.tech_stack || [], project.language),
-          link: project.live_url || project.github_url,
-          github_url: project.github_url,
-          category: project.category,
-          featured: project.featured,
-          stars: 0,
-          language: project.language || 'JavaScript',
-          topics: project.tech_stack || []
-        }));
+      if (result.success && result.data) {
+        console.log('Raw API response:', result.data);
+          // Map database projects to demo format using custom iconLists
+        const mappedProjects = result.data.map((project: any, index: number) => {
+          // Check if tech_stack contains icon paths (custom selection) or tech names
+          let iconLists: string[] = [];
+          
+          if (project.tech_stack && project.tech_stack.length > 0) {
+            // Check if first item looks like an icon path (starts with /)
+            const isIconPath = project.tech_stack[0]?.startsWith('/');
+            
+            if (isIconPath) {
+              // Use custom selected icons directly
+              iconLists = project.tech_stack.slice(0, 5);
+            } else {
+              // Map tech stack names to icons using ProjectService
+              iconLists = ProjectService.mapTechStackToIcons(project.tech_stack, project.language);
+            }
+          } else {
+            // Fallback to mapping from topics or default icons
+            const fallbackIcons = project.topics && project.topics.length > 0
+              ? ProjectService.mapTechStackToIcons(project.topics, project.language)
+              : ['/re.svg', '/ts.svg', '/next.svg', '/tail.svg']; // Default tech stack
+            
+            iconLists = fallbackIcons;
+          }
+
+          return {
+            id: index + 1,
+            title: project.title,
+            titlehead: project.title,
+            des: project.description || "A comprehensive project showcasing modern development practices.",
+            img: ProjectService.getProjectImage(project.category),
+            iconLists: iconLists,
+            link: project.live_url || project.github_url,
+            github_url: project.github_url,
+            category: project.category,
+            featured: project.featured,
+            stars: 0,
+            language: project.language || 'JavaScript',
+            topics: project.tech_stack || []
+          };
+        });
         
         setProjects(mappedProjects);
       }
@@ -287,10 +314,7 @@ export default function DemoPage() {
                       }}
                     >
                       {item.des}
-                    </p>
-
-                    <div className="flex items-center justify-between mt-7 mb-3">
-                      <div className="flex items-center">
+                    </p>                    <div className="flex items-center justify-between mt-7 mb-3">                      <div className="flex items-center">
                         {item.iconLists.map((icon, index) => (
                           <div
                             key={index}
@@ -299,7 +323,16 @@ export default function DemoPage() {
                               transform: `translateX(-${5 * index + 2}px)`,
                             }}
                           >
-                            <img src={icon} alt="icon" className="p-2" />
+                            <img 
+                              src={icon} 
+                              alt={`Tech icon ${index + 1}`} 
+                              className="p-2"
+                              onError={(e) => {
+                                console.error('Failed to load icon:', icon);
+                                // Fallback to a default icon
+                                e.currentTarget.src = '/gsap.svg';
+                              }}
+                            />
                           </div>
                         ))}
                       </div>
@@ -310,9 +343,7 @@ export default function DemoPage() {
                         </p>
                         <FaLocationArrow className="ms-3" color="#CBACF9" />
                       </div>
-                    </div>
-
-                    {/* Additional Demo Info */}
+                    </div>                    {/* Additional Demo Info */}
                     <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
                       <div className="flex items-center gap-2">
                         {item.featured && (
@@ -321,8 +352,7 @@ export default function DemoPage() {
                             Featured
                           </span>
                         )}
-                        <span className="text-gray-500">#{item.id}</span>
-                      </div>                      <div className="flex items-center gap-2">
+                      </div><div className="flex items-center gap-2">
                         <button
                           onClick={(e) => {
                             e.preventDefault();

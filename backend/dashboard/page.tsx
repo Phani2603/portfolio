@@ -54,9 +54,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [showOnlySelected, setShowOnlySelected] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [showOnlySelected, setShowOnlySelected] = useState(false);  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [testDbStatus, setTestDbStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [showIconSelector, setShowIconSelector] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchProjects();
@@ -122,7 +122,6 @@ export default function AdminDashboard() {
       )
     );
   };
-
   const updateProjectCategory = (projectId: string, category: string) => {
     setProjects(prevProjects => 
       prevProjects.map(project => 
@@ -131,7 +130,72 @@ export default function AdminDashboard() {
           : project
       )
     );
-  };  const saveChanges = async () => {
+  };
+
+  const updateProjectIcons = (projectId: string, selectedIcons: string[]) => {
+    setProjects(prevProjects => 
+      prevProjects.map(project => 
+        project.id === projectId 
+          ? { ...project, tech_stack: selectedIcons }
+          : project
+      )
+    );
+  };
+
+  const toggleIconSelector = (projectId: string) => {
+    setShowIconSelector(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
+
+  const getAvailableIcons = (project: Project): { icon: string, label: string }[] => {
+    const iconMap: Record<string, { icon: string, label: string }> = {
+      'react': { icon: '/re.svg', label: 'React' },
+      'typescript': { icon: '/ts.svg', label: 'TypeScript' },
+      'javascript': { icon: '/c.svg', label: 'JavaScript' },
+      'nextjs': { icon: '/next.svg', label: 'Next.js' },
+      'tailwindcss': { icon: '/tail.svg', label: 'Tailwind CSS' },
+      'tailwind': { icon: '/tail.svg', label: 'Tailwind CSS' },
+      'threejs': { icon: '/three.svg', label: 'Three.js' },
+      'three.js': { icon: '/three.svg', label: 'Three.js' },
+      'framer-motion': { icon: '/fm.svg', label: 'Framer Motion' },
+      'gsap': { icon: '/gsap.svg', label: 'GSAP' },
+      'docker': { icon: '/dock.svg', label: 'Docker' },
+      'git': { icon: '/git.svg', label: 'Git' },
+      'nodejs': { icon: '/c.svg', label: 'Node.js' },
+      'clerk': { icon: '/c.svg', label: 'Clerk Auth' },
+      'social-media': { icon: '/p.svg', label: 'Social Media' },
+      'hostinger': { icon: '/host.svg', label: 'Hostinger' },
+      'cloud': { icon: '/cloud.svg', label: 'Cloud' },
+      'streaming': { icon: '/stream.svg', label: 'Streaming' }
+    };
+
+    // Get icons based on project's tech stack and common icons
+    const allTech = [...(project.tech_stack || []), project.language].filter(Boolean);
+    const availableIcons = allTech.map(tech => {
+      const key = tech.toLowerCase();
+      return iconMap[key] || { icon: '/gsap.svg', label: tech };
+    });
+
+    // Add common icons
+    const commonIcons = [
+      { icon: '/re.svg', label: 'React' },
+      { icon: '/ts.svg', label: 'TypeScript' },
+      { icon: '/next.svg', label: 'Next.js' },
+      { icon: '/tail.svg', label: 'Tailwind CSS' },
+      { icon: '/three.svg', label: 'Three.js' },
+      { icon: '/fm.svg', label: 'Framer Motion' },
+      { icon: '/gsap.svg', label: 'GSAP' },
+      { icon: '/dock.svg', label: 'Docker' },
+      { icon: '/git.svg', label: 'Git' }
+    ];
+
+    // Combine and remove duplicates
+    return [...availableIcons, ...commonIcons].filter((item, index, arr) => 
+      arr.findIndex(i => i.icon === item.icon) === index
+    );
+  };const saveChanges = async () => {
     setSaveStatus('saving');
     try {
       if (projects.length === 0) {
@@ -495,7 +559,11 @@ export default function AdminDashboard() {
                 onToggleSelection={() => toggleProjectSelection(project.id)}
                 onToggleFeatured={() => toggleProjectFeatured(project.id)}
                 onUpdateCategory={(category) => updateProjectCategory(project.id, category)}
+                onUpdateIcons={(icons) => updateProjectIcons(project.id, icons)}
+                onToggleIconSelector={() => toggleIconSelector(project.id)}
                 categories={categories}
+                showIconSelector={showIconSelector[project.id]}
+                availableIcons={getAvailableIcons(project)}
               />
             ))}
           </AnimatePresence>
@@ -529,15 +597,32 @@ function ProjectCard({
   onToggleSelection, 
   onToggleFeatured, 
   onUpdateCategory, 
-  categories 
+  onUpdateIcons, 
+  onToggleIconSelector, 
+  categories, 
+  showIconSelector, 
+  availableIcons 
 }: {
   project: Project;
   index: number;
   onToggleSelection: () => void;
   onToggleFeatured: () => void;
   onUpdateCategory: (category: string) => void;
+  onUpdateIcons: (icons: string[]) => void;
+  onToggleIconSelector: () => void;
   categories: string[];
+  showIconSelector: boolean;
+  availableIcons: { icon: string, label: string }[];
 }) {
+  const handleIconClick = (icon: string) => {
+    const isSelected = project.tech_stack.includes(icon);
+    const newIcons = isSelected 
+      ? project.tech_stack.filter(i => i !== icon) 
+      : [...project.tech_stack, icon];
+
+    onUpdateIcons(newIcons);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -613,6 +698,69 @@ function ProjectCard({
           </select>
         </div>
 
+        {/* Icon Selection */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Tech Stack Icons</span>
+            <button
+              onClick={onToggleIconSelector}
+              className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+            >
+              {showIconSelector ? 'Hide' : 'Customize'}
+            </button>
+          </div>
+          
+          {/* Current Icons Display */}
+          <div className="flex items-center space-x-1 mb-2">
+            {project.tech_stack?.slice(0, 5).map((icon, index) => (
+              <div key={index} className="w-6 h-6 relative">
+                <img
+                  src={icon}
+                  alt="Tech icon"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ))}
+            {project.tech_stack?.length === 0 && (
+              <span className="text-xs text-gray-500">No icons selected</span>
+            )}
+          </div>
+
+          {/* Icon Selector Panel */}
+          {showIconSelector && (
+            <div className="mt-2 p-3 bg-gray-800 rounded-lg">
+              <p className="text-xs text-gray-400 mb-2">Select up to 5 icons:</p>
+              <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">
+                {availableIcons.map((iconItem, index) => {
+                  const isSelected = project.tech_stack?.includes(iconItem.icon) || false;
+                  const canAdd = (project.tech_stack?.length || 0) < 5;
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleIconClick(iconItem.icon)}
+                      className={`p-2 rounded border-2 transition-all ${
+                        isSelected 
+                          ? 'border-purple-500 bg-purple-500/20' 
+                          : 'border-gray-600 hover:border-gray-500'
+                      } ${!canAdd && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={!canAdd && !isSelected}
+                    >
+                      <img
+                        src={iconItem.icon}
+                        alt={iconItem.label}
+                        className="w-4 h-4 mx-auto"
+                      />
+                      <span className="text-xs text-gray-400 block mt-1 truncate">
+                        {iconItem.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Tech Stack */}
         <div className="flex flex-wrap gap-2 mb-4">
           {project.tech_stack?.slice(0, 4).map((tech, techIndex) => (
@@ -668,6 +816,29 @@ function ProjectCard({
             )}
           </div>
         </div>
+
+        {/* Icon Selector */}
+        {showIconSelector && (
+          <div className="mt-4">
+            <div className="flex flex-wrap gap-2">
+              {availableIcons.map(({ icon, label }) => (
+                <div
+                  key={icon}
+                  onClick={() => handleIconClick(label.toLowerCase())}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-300",
+                    project.tech_stack.includes(label.toLowerCase())
+                      ? "bg-purple-500/20 text-purple-400"
+                      : "bg-gray-700/50 text-gray-400 hover:bg-gray-600/50"
+                  )}
+                >
+                  <img src={icon} alt={label} className="w-5 h-5" />
+                  <span className="text-sm">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );

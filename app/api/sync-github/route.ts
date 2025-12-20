@@ -16,22 +16,21 @@ export async function POST() {
 
     // Sync each repository
     for (const repo of repos) {
-      try {
-        const projectData = {
+      try {        const projectData = {
           title: githubService.formatProjectTitle(repo.name),
           description: repo.description || 'No description available',
           long_description: null,
           github_url: repo.html_url,
           live_url: repo.homepage || null,
           image_url: githubService.generateProjectImage(repo.name),
-          tech_stack: repo.topics.length > 0 ? repo.topics : [repo.language].filter(Boolean),
+          tech_stack: [], // Start with empty array - user will customize icons manually
           category: githubService.categorizeProject(repo.topics, repo.language, repo.name),
           featured: repo.stargazers_count > 3 || repo.topics.includes('portfolio') || repo.topics.includes('featured'),
           stars: repo.stargazers_count,
           forks: repo.forks_count,
           language: repo.language,
           last_synced: new Date().toISOString()
-        };        // First check if project exists
+        };// First check if project exists
         const { data: existingProject } = await supabaseAdmin
           .from('projects')
           .select('id')
