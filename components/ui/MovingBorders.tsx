@@ -6,7 +6,7 @@ import {
   useMotionTemplate,
   useMotionValue,
   useTransform,
-} from "motion/react";
+} from "motion/react-client";
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 

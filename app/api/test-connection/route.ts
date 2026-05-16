@@ -29,7 +29,7 @@ export async function GET() {
       message: 'Supabase connection successful!',
       connection: {
         url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'missing',
-        key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'configured' : 'missing'
+        key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ? 'configured' : 'missing'
       },
       database: {
         accessible: !healthError,

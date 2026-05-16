@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Spotlight } from '@/components/ui/spotlight-new';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   FaGithub, 
   FaCheck, 
@@ -17,6 +17,7 @@ import {
   FaSave,
   FaRocket
 } from 'react-icons/fa';
+import Link from 'next/link';
 
 interface Project {
   id: string;
@@ -308,24 +309,24 @@ export default function AdminDashboard() {
                 </span>
               </div>
             </div>            <div className="flex items-center space-x-4">
-              <a
+              <Link
                 href="/demo"
                 className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
               >
                 🎯 Preview Demo
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/admin-tests"
                 className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
               >
                 🧪 API Tests
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/"
                 className="inline-flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
               >
                 🏠 Home
-              </a>
+              </Link>
             </div>
           </div>
         </div>

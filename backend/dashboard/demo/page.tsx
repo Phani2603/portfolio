@@ -1,12 +1,68 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Spotlight } from '@/components/ui/spotlight-new';
-import { PinContainer } from '@/components/ui/3d-pin';
+import { WorkCard } from '@/app/new-landing/sections/WorkCard';
 import { cn } from '@/lib/utils';
-import { FaLocationArrow, FaGithub, FaStar, FaEye, FaArrowLeft } from 'react-icons/fa';
+import { FaEye, FaArrowLeft } from 'react-icons/fa';
 import { ProjectService } from '@/backend/services/project-service';
+
+type Avatar = {
+  imageUrl: string;
+  profileUrl: string;
+};
+
+const techLabelMap: Record<string, string> = {
+  react: 'React',
+  typescript: 'TypeScript',
+  javascript: 'JavaScript',
+  nextjs: 'Next.js',
+  tailwindcss: 'Tailwind CSS',
+  tailwind: 'Tailwind CSS',
+  threejs: 'Three.js',
+  'three.js': 'Three.js',
+  'framer-motion': 'Framer Motion',
+  gsap: 'GSAP',
+  docker: 'Docker',
+  git: 'Git',
+  nodejs: 'Node.js',
+  clerk: 'Clerk Auth',
+  'social-media': 'Social Media',
+  hostinger: 'Hostinger',
+  cloud: 'Cloud',
+  streaming: 'Streaming',
+};
+
+const iconLabelMap: Record<string, string> = {
+  '/re.svg': 'React',
+  '/ts.svg': 'TypeScript',
+  '/c.svg': 'JavaScript',
+  '/next.svg': 'Next.js',
+  '/tail.svg': 'Tailwind CSS',
+  '/three.svg': 'Three.js',
+  '/fm.svg': 'Framer Motion',
+  '/gsap.svg': 'GSAP',
+  '/dock.svg': 'Docker',
+  '/git.svg': 'Git',
+  '/cloud.svg': 'Cloud',
+  '/stream.svg': 'Streaming',
+  '/host.svg': 'Hostinger',
+  '/p.svg': 'Social Media',
+  '/p2.svg': 'IoT',
+  '/p3.svg': 'Music',
+  '/p11.svg': 'Algorithms',
+};
+
+const iconPathToAvatar = (iconPath: string, profileUrl: string): Avatar => ({
+  imageUrl: iconPath,
+  profileUrl,
+});
+
+const normalizeTechLabel = (tech: string) => {
+  const key = tech.toLowerCase();
+  return techLabelMap[key] || iconLabelMap[tech] || tech;
+};
 
 interface DemoProject {
   id: number;
@@ -22,6 +78,9 @@ interface DemoProject {
   stars: number;
   language: string;
   topics: string[];
+  deploymentState: 'Production' | 'Development';
+  skills: string[];
+  avatarUrls: Avatar[];
 }
 
 export default function DemoPage() {
@@ -30,72 +89,90 @@ export default function DemoPage() {
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
-    fetchProjectsForDemo();
+    setLoading(true);
+    (async () => {
+      try {
+        const response = await fetch('/api/projects');
+        const result = await response.json();
+        if (result.success && result.data) {
+          const projectData = result.data as Array<{
+            title: string;
+            description?: string;
+            category: string;
+            tech_stack?: string[];
+            topics?: string[];
+            language?: string;
+            live_url?: string;
+            github_url?: string;
+            featured?: boolean;
+          }>;
+
+          const mappedProjects = projectData.map((project, index) => {
+            let iconLists: string[] = [];
+
+            if (project.tech_stack && project.tech_stack.length > 0) {
+              const isIconPath = project.tech_stack[0]?.startsWith('/');
+              if (isIconPath) {
+                iconLists = project.tech_stack.slice(0, 5);
+              } else {
+                iconLists = ProjectService.mapTechStackToIcons(project.tech_stack, project.language);
+              }
+            } else {
+              const fallbackIcons = project.topics && project.topics.length > 0
+                ? ProjectService.mapTechStackToIcons(project.topics, project.language)
+                : ['/re.svg', '/ts.svg', '/next.svg', '/tail.svg'];
+              iconLists = fallbackIcons;
+            }
+
+            const skills = (project.tech_stack && project.tech_stack.length > 0)
+              ? project.tech_stack.map((tech: string) => normalizeTechLabel(tech))
+              : (project.topics && project.topics.length > 0)
+                ? project.topics.map((tech: string) => normalizeTechLabel(tech))
+                : ['React', 'TypeScript', 'Next.js'];
+
+            const deploymentState: 'Production' | 'Development' = project.live_url ? 'Production' : 'Development';
+
+            const avatarUrls = iconLists.slice(0, 5).map((iconPath) =>
+              iconPathToAvatar(iconPath, project.live_url || project.github_url || '#')
+            );
+
+            const featured = project.featured === true;
+
+            return {
+              id: index + 1,
+              title: project.title,
+              titlehead: project.title,
+              des: project.description || "A comprehensive project showcasing modern development practices.",
+              img: ProjectService.getProjectImage(project.category),
+              iconLists: iconLists,
+              link: project.live_url || project.github_url || "#",
+              github_url: project.github_url || "",
+              category: project.category,
+              featured,
+              stars: 0,
+              language: project.language || 'JavaScript',
+              topics: project.tech_stack || [],
+              skills,
+              avatarUrls,
+              deploymentState,
+            };
+          });
+          setProjects(mappedProjects);
+        }
+      } catch (error) {
+        console.error('Failed to fetch projects for demo:', error);
+        setProjects(createFallbackDemoProjects());
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [refreshKey]);
 
   useEffect(() => {
     // Update selected projects when max count changes
     setSelectedProjects(projects.slice(0, maxProjectsToShow));
   }, [projects, maxProjectsToShow]);
-
-  const fetchProjectsForDemo = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/projects');
-      const result = await response.json();
-      if (result.success && result.data) {
-        console.log('Raw API response:', result.data);
-          // Map database projects to demo format using custom iconLists
-        const mappedProjects = result.data.map((project: any, index: number) => {
-          // Check if tech_stack contains icon paths (custom selection) or tech names
-          let iconLists: string[] = [];
-          
-          if (project.tech_stack && project.tech_stack.length > 0) {
-            // Check if first item looks like an icon path (starts with /)
-            const isIconPath = project.tech_stack[0]?.startsWith('/');
-            
-            if (isIconPath) {
-              // Use custom selected icons directly
-              iconLists = project.tech_stack.slice(0, 5);
-            } else {
-              // Map tech stack names to icons using ProjectService
-              iconLists = ProjectService.mapTechStackToIcons(project.tech_stack, project.language);
-            }
-          } else {
-            // Fallback to mapping from topics or default icons
-            const fallbackIcons = project.topics && project.topics.length > 0
-              ? ProjectService.mapTechStackToIcons(project.topics, project.language)
-              : ['/re.svg', '/ts.svg', '/next.svg', '/tail.svg']; // Default tech stack
-            
-            iconLists = fallbackIcons;
-          }
-
-          return {
-            id: index + 1,
-            title: project.title,
-            titlehead: project.title,
-            des: project.description || "A comprehensive project showcasing modern development practices.",
-            img: ProjectService.getProjectImage(project.category),
-            iconLists: iconLists,
-            link: project.live_url || project.github_url,
-            github_url: project.github_url,
-            category: project.category,
-            featured: project.featured,
-            stars: 0,
-            language: project.language || 'JavaScript',
-            topics: project.tech_stack || []
-          };
-        });
-        
-        setProjects(mappedProjects);
-      }
-    } catch (error) {
-      console.error('Failed to fetch projects for demo:', error);
-      // Use fallback demo data
-      setProjects(createFallbackDemoProjects());
-    } finally {
-      setLoading(false);    }
-  };
+ 
 
   const refreshDemo = () => {
     setRefreshKey(prev => prev + 1);
@@ -114,7 +191,14 @@ export default function DemoPage() {
       featured: true,
       stars: 12,
       language: "TypeScript",
-      topics: ["react", "algorithms", "visualization"]
+      topics: ["react", "algorithms", "visualization"],
+      deploymentState: "Production",
+      skills: ["React", "TypeScript", "Visualization"],
+      avatarUrls: [
+        { imageUrl: "/re.svg", profileUrl: "#" },
+        { imageUrl: "/ts.svg", profileUrl: "#" },
+        { imageUrl: "/three.svg", profileUrl: "#" },
+      ],
     },
     {
       id: 2,
@@ -129,7 +213,14 @@ export default function DemoPage() {
       featured: true,
       stars: 8,
       language: "JavaScript",
-      topics: ["social-media", "movies", "fullstack"]
+      topics: ["social-media", "movies", "fullstack"],
+      deploymentState: "Production",
+      skills: ["Social Media", "Full Stack", "Movies"],
+      avatarUrls: [
+        { imageUrl: "/re.svg", profileUrl: "#" },
+        { imageUrl: "/next.svg", profileUrl: "#" },
+        { imageUrl: "/c.svg", profileUrl: "#" },
+      ],
     },
     {
       id: 3,
@@ -144,7 +235,14 @@ export default function DemoPage() {
       featured: false,
       stars: 5,
       language: "TypeScript",
-      topics: ["iot", "sensors", "realtime"]
+      topics: ["iot", "sensors", "realtime"],
+      deploymentState: "Development",
+      skills: ["IoT", "Sensors", "Realtime"],
+      avatarUrls: [
+        { imageUrl: "/re.svg", profileUrl: "#" },
+        { imageUrl: "/ts.svg", profileUrl: "#" },
+        { imageUrl: "/cloud.svg", profileUrl: "#" },
+      ],
     },
     {
       id: 4,
@@ -159,7 +257,14 @@ export default function DemoPage() {
       featured: false,
       stars: 3,
       language: "JavaScript",
-      topics: ["music", "ai", "social"]
+      topics: ["music", "ai", "social"],
+      deploymentState: "Development",
+      skills: ["Music", "AI", "Social"],
+      avatarUrls: [
+        { imageUrl: "/re.svg", profileUrl: "#" },
+        { imageUrl: "/next.svg", profileUrl: "#" },
+        { imageUrl: "/stream.svg", profileUrl: "#" },
+      ],
     }
   ];
 
@@ -217,8 +322,9 @@ export default function DemoPage() {
             Portfolio <span className="text-purple-300">Preview</span>
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
-            This is how your selected projects will appear on the main portfolio using the 3D Pin component
-          </p>          {/* Project Count Controller */}
+            This is how your selected projects will appear on the main portfolio using the WorkCard layout
+          </p>
+          {/* Project Count Controller */}
           <div className="flex justify-center items-center gap-6 mb-8">
             <div className="flex items-center gap-4">
               <label className="text-gray-300">Projects to Display:</label>
@@ -271,104 +377,35 @@ export default function DemoPage() {
               <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="flex flex-wrap items-center justify-center p-4 gap-20 mt-10">
-              {selectedProjects.map((item) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: item.id * 0.1 }}
-                  className="lg:min-h-[32.5rem] h-[25rem] flex items-center justify-center sm:w-96 w-[80vw]"
-                >
-                  <PinContainer
-                    title={item.titlehead}
-                    href={item.link}
+            <div className="mx-auto max-w-6xl">
+              <div className="grid gap-8 lg:grid-cols-2 p-4 mt-10">
+                {selectedProjects.map((item) => {
+                const workItem = {
+                  title: item.title,
+                  description: item.des,
+                  skills: item.skills || item.topics || [],
+                  avatarUrls: item.avatarUrls || [],
+                  image: item.img,
+                  deploymentState: item.deploymentState,
+                  href: item.link || item.github_url || '#',
+                  githubUrl: item.github_url,
+                };
+
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: item.id * 0.06 }}
+                    className="w-full"
                   >
-                    <div className="relative flex items-center justify-center sm:w-96 w-[80vw] overflow-hidden h-[20vh] lg:h-[30vh] mb-10">
-                      <div
-                        className="relative w-full h-full overflow-hidden rounded-2xl"
-                        style={{ backgroundColor: "#13162D" }}
-                      >
-                        <img
-                          src="/bg.png"
-                          alt="bgimg"
-                          className="z-10 absolute bottom-0"
-                        />
-                        <img
-                          src={item.img}
-                          alt="cover"
-                          className="z-10 absolute -bottom-5"
-                        />
-                      </div>
+                    <div className="mx-auto">
+                      <WorkCard item={workItem} />
                     </div>
-
-                    <h1 className="font-bold lg:text-2xl md:text-xl text-base line-clamp-1">
-                      {item.title}
-                    </h1>
-
-                    <p
-                      className="lg:text-xl lg:font-normal font-light text-sm line-clamp-2"
-                      style={{
-                        color: "#BEC1DD",
-                        margin: "1vh 0",
-                      }}
-                    >
-                      {item.des}
-                    </p>                    <div className="flex items-center justify-between mt-7 mb-3">                      <div className="flex items-center">
-                        {item.iconLists.map((icon, index) => (
-                          <div
-                            key={index}
-                            className="border border-white/[.2] rounded-full bg-black lg:w-10 lg:h-10 w-8 h-8 flex justify-center items-center"
-                            style={{
-                              transform: `translateX(-${5 * index + 2}px)`,
-                            }}
-                          >
-                            <img 
-                              src={icon} 
-                              alt={`Tech icon ${index + 1}`} 
-                              className="p-2"
-                              onError={(e) => {
-                                console.error('Failed to load icon:', icon);
-                                // Fallback to a default icon
-                                e.currentTarget.src = '/gsap.svg';
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex justify-center items-center">
-                        <p className="flex lg:text-xl md:text-xs text-sm text-purple-300">
-                          Check Live Site
-                        </p>
-                        <FaLocationArrow className="ms-3" color="#CBACF9" />
-                      </div>
-                    </div>                    {/* Additional Demo Info */}
-                    <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
-                      <div className="flex items-center gap-2">
-                        {item.featured && (
-                          <span className="flex items-center gap-1 text-yellow-400">
-                            <FaStar className="w-3 h-3" />
-                            Featured
-                          </span>
-                        )}
-                      </div><div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            window.open(item.github_url, '_blank', 'noopener,noreferrer');
-                          }}
-                          className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded"
-                          title="View on GitHub"
-                        >
-                          <FaGithub className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </PinContainer>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
+              </div>
             </div>
           )}
         </div>
@@ -386,7 +423,7 @@ export default function DemoPage() {
           </h3>
           <div className="grid md:grid-cols-2 gap-6 text-sm text-gray-300">
             <div>
-              <h4 className="font-medium text-blue-400 mb-2">What you're seeing:</h4>
+              <h4 className="font-medium text-blue-400 mb-2">What you are seeing:</h4>
               <ul className="list-disc list-inside space-y-1">
                 <li>Your projects displayed with the 3D Pin component</li>
                 <li>Same layout and styling as your main portfolio</li>
