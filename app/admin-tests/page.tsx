@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 
 interface Project {
@@ -258,12 +259,12 @@ export default function AdminTests() {
               >
                 📊 Dashboard
               </a>
-              <a
+              <Link
                 href="/"
                 className="inline-flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
               >
                 🏠 Home
-              </a>
+              </Link>
             </div>
           </div>
         </div>

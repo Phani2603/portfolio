@@ -15,7 +15,7 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
-} from "motion/react-client";
+} from "motion/react";
 
 import React, { useState } from "react";
 import { useRef } from "react";
